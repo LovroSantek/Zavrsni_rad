@@ -23,7 +23,7 @@
 extern spi_device_handle_t spi_handle;  // Declaration of the SPI device handle
 
 void spi_setup();
-int8_t read_register(uint8_t adress);
+uint8_t read_register(uint8_t adress);
 bool write_register(uint8_t address, uint8_t value);
 bool select_user_bank(uint8_t user_bank);
 

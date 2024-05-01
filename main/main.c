@@ -11,8 +11,8 @@
 void app_main() 
 {
     spi_setup();
-    
-    const char* TAG = "Timer"; // Dodano samo za delay
+
+    ESP_LOGI("SPI: ", "Who am I has a value of: %02X", read_register(0));
 
     if (write_register(PWR_MGMT_REG_ADRESS, WAKE_UP_MASK))
     {
@@ -20,7 +20,7 @@ void app_main()
     }
 
     while(1) {
-        ESP_LOGI(TAG, "One second has passed.");
+        ESP_LOGI("Timer: ", "One second has passed.");
         read_gyro_x();
         vTaskDelay(500 / portTICK_PERIOD_MS); //Dodano samo za delay
     }

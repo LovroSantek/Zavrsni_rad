@@ -49,7 +49,7 @@ void spi_setup()
     }
 }
 
-int8_t read_register(uint8_t adress)
+uint8_t read_register(uint8_t adress)
 {
     uint8_t send_buf[2] = {SPI_READ_MASK | adress, 0x00};
     uint8_t recv_buf[2] = {0};
