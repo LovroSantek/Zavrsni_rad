@@ -21,7 +21,7 @@ void app_main()
 
     while(1) {
         ESP_LOGI("Timer: ", "One second has passed.");
-        read_gyro_x();
-        vTaskDelay(500 / portTICK_PERIOD_MS); //Dodano samo za delay
+        ESP_LOGI("Acceleration: ", "x = %.3f  y = %.3f  z = %.3f", read_accel(ACCEL_XOUT_H), read_accel(ACCEL_YOUT_H), read_accel(ACCEL_ZOUT_H));
+        vTaskDelay(1100 / portTICK_PERIOD_MS); //Dodano samo za delay
     }
 }

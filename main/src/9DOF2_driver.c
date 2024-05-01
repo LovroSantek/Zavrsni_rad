@@ -118,35 +118,34 @@ bool select_user_bank(uint8_t user_bank)
     }
 }
 
-void read_gyro_x(void) {
-    uint8_t reg_address_high = 0x2D;  // Register address for ACCEL_XOUT_H
-    uint8_t reg_address_low = 0x2E;   // Register address for ACCEL_XOUT_L
-
+float read_accel(uint8_t accel_out_adress)
+{
     // Prepare the command to read the high byte
-    uint8_t tx_data_high[2] = {0x80 | reg_address_high, 0x00};  // Set the read bit (MSB = 1)
+    uint8_t tx_data_high[2] = {SPI_READ_MASK | accel_out_adress, 0x00};
     uint8_t rx_data_high[2] = {0};
     spi_transaction_t trans_high = {
-        .length = 16,  // Command and data, 16 bits total
+        .length = 16,
         .tx_buffer = tx_data_high,
         .rx_buffer = rx_data_high
     };
-    spi_device_transmit(spi_handle, &trans_high);  // Transmit!
+    spi_device_transmit(spi_handle, &trans_high);
 
     // Prepare the command to read the low byte
-    uint8_t tx_data_low[2] = {SPI_READ_MASK | reg_address_low, 0x00};  // Set the read bit (MSB = 1)
+    uint8_t tx_data_low[2] = {SPI_READ_MASK | (accel_out_adress + 1), 0x00};
     uint8_t rx_data_low[2] = {0};
     spi_transaction_t trans_low = {
-        .length = 16,  // Command and data, 16 bits total
+        .length = 16,
         .tx_buffer = tx_data_low,
         .rx_buffer = rx_data_low
     };
-    spi_device_transmit(spi_handle, &trans_low);  // Transmit!
+    spi_device_transmit(spi_handle, &trans_low);
 
-    // Combine the high and low bytes
-    int16_t accel_x = ((int16_t)rx_data_high[1] << 8) | rx_data_low[1];
+    int16_t accel_x = ((int16_t)rx_data_high[1] << 8) | rx_data_low[1];  // Combine the high and low bytes
 
-    float g_force = accel_x / ACCEL_SENSITIVITY;  // Convert to g-force
-    float acceleration = g_force * 9.81;          // Convert g-force to m/s² if needed
+    float acceleration = accel_x / ACCEL_SENSITIVITY;  // Convert to g-force
+    // float g_force = acceleration * 9.81;          // Convert g-force to m/s² if needed
 
-    ESP_LOGI("ACCEL", "Acceleration in m/s^2: %.3f m/s^2\n", acceleration);
+    //ESP_LOGI("ACCEL", "Acceleration in m/s^2: %.3f g\n", acceleration);
+
+    return acceleration;
 }

@@ -9,16 +9,26 @@
 #define PIN_NUM_CLK 18
 #define PIN_NUM_CS 5
 
-#define MAX_TRANSFER_SIZE 512  // Max transfer bit size
+#define MAX_TRANSFER_SIZE 512
 #define SPI_WRITE_MASK 0x7F
 #define SPI_READ_MASK 0X80
-
+ 
 #define USER_BANK_REG_ADDRESS 0X7F
 #define PWR_MGMT_REG_ADRESS 0X06
 #define WAKE_UP_MASK 0X01
 #define SLEEP_MASK 0X41
 
-#define ACCEL_SENSITIVITY 16384.0  // Sensitivity settings for the accelerometer
+// Accelerometer result registers
+#define ACCEL_XOUT_H 0x2D
+#define ACCEL_YOUT_H 0X2F
+#define ACCEL_ZOUT_H 0X31
+
+// Gyroscope result registers
+#define GYRO_XOUT_H 33
+#define GYRO_YOUT_H 35
+#define GYRO_ZOUT_H 37
+
+#define ACCEL_SENSITIVITY 16384.0  // Sensitivity setting for the accelerometer (+-2g option)
 
 extern spi_device_handle_t spi_handle;  // Declaration of the SPI device handle
 
@@ -26,7 +36,6 @@ void spi_setup();
 uint8_t read_register(uint8_t adress);
 bool write_register(uint8_t address, uint8_t value);
 bool select_user_bank(uint8_t user_bank);
-
-void read_gyro_x();
+float read_accel(uint8_t accel_out_adress);
 
 #endif
