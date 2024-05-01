@@ -9,20 +9,24 @@
 #define PIN_NUM_CLK 18
 #define PIN_NUM_CS 5
 
-// SPI register addresses
+#define MAX_TRANSFER_SIZE 512  // Max transfer bit size
+#define SPI_WRITE_MASK 0x7F
+#define SPI_READ_MASK 0X80
+
 #define USER_BANK_REG_ADDRESS 0X7F
+#define PWR_MGMT_REG_ADRESS 0X06
+#define WAKE_UP_MASK 0X01
+#define SLEEP_MASK 0X41
 
-// Sensitivity settings for the accelerometer
-#define ACCEL_SENSITIVITY 16384.0
+#define ACCEL_SENSITIVITY 16384.0  // Sensitivity settings for the accelerometer
 
-// Declaration of the SPI device handle (defined in the corresponding .c file)
-extern spi_device_handle_t spi_handle;
+extern spi_device_handle_t spi_handle;  // Declaration of the SPI device handle
 
-// Function prototypes for SPI-related operations
-esp_err_t spi_setup(void);
-void read_from_sensor(void);
-void select_user_bank(uint8_t user_bank);
-void read_gyro_x(void);
-void write_to_sensor(uint8_t address, uint8_t value);
+void spi_setup();
+int8_t read_register(uint8_t adress);
+bool write_register(uint8_t address, uint8_t value);
+bool select_user_bank(uint8_t user_bank);
 
-#endif // SENSOR_SPI_H
+void read_gyro_x();
+
+#endif

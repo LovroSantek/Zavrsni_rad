@@ -1,35 +1,33 @@
-#include "driver/spi_master.h"
+#include <string.h>
 #include "esp_log.h"
 
 #include "9DOF2_driver.h"
 
-#include <string.h>
-
 spi_device_handle_t spi_handle;
 
-esp_err_t spi_setup(void) {
-
+void spi_setup()
+{
     spi_bus_config_t buscfg = {
         .miso_io_num = PIN_NUM_MISO,
         .mosi_io_num = PIN_NUM_MOSI,
         .sclk_io_num = PIN_NUM_CLK,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
-        .max_transfer_sz = 512
+        .max_transfer_sz = MAX_TRANSFER_SIZE
     };
 
-    esp_err_t ret = spi_bus_initialize(VSPI_HOST, &buscfg, SPI_DMA_CH_AUTO);
-    if (ret != ESP_OK)
+    esp_err_t result = spi_bus_initialize(VSPI_HOST, &buscfg, SPI_DMA_CH_AUTO);
+    if (result != ESP_OK)
     {
-        ESP_LOGE("SPI", "Failed to initialize bus");
-        return ret;
+        ESP_LOGE("SPI", "Failed to initialize bus: %s", esp_err_to_name(result));
+        return;
     }
 
     spi_device_interface_config_t devcfg = {
-        .clock_speed_hz = 100000,  // Clock 100 kHz
-        .mode = 0,  // SPI mode 0 (nisam našo u datasheetu koji je mode pa sam uzeo ovaj najčešći), GPT je prvo reko 3 pa se predmoslio
+        .clock_speed_hz = 1000000,  // Clock 1 MHz
+        .mode = 0,  // SPI mode 0
         .spics_io_num = PIN_NUM_CS,
-        .queue_size = 7,  // Ovo se moze jos mijenjat
+        .queue_size = 7,
         .flags = 0,
         .command_bits = 0,
         .address_bits = 0,
@@ -39,20 +37,21 @@ esp_err_t spi_setup(void) {
         .input_delay_ns = 0
     };
 
-    ret = spi_bus_add_device(VSPI_HOST, &devcfg, &spi_handle);
-    if (ret != ESP_OK)
+    result = spi_bus_add_device(VSPI_HOST, &devcfg, &spi_handle);
+    if (result != ESP_OK)
     {
-        ESP_LOGE("SPI", "Failed to add device");
+        ESP_LOGE("SPI", "Failed to setup SPI: %s", esp_err_to_name(result));
         spi_bus_free(VSPI_HOST);
-        return ret;
     }
-
-    return ESP_OK;
+    else
+    {
+        ESP_LOGI("SPI", "SPI setup successful");
+    }
 }
 
-void read_from_sensor()  //from WHO_AM_I
+int8_t read_register(uint8_t adress)
 {
-    uint8_t send_buf[2] = {0x80 | 0x05, 0x00}; // 0x80 for read operation, 0x00 is the register address
+    uint8_t send_buf[2] = {SPI_READ_MASK | adress, 0x00};
     uint8_t recv_buf[2] = {0};
 
     spi_transaction_t t;
@@ -66,15 +65,42 @@ void read_from_sensor()  //from WHO_AM_I
     if (ret != ESP_OK) {
         ESP_LOGE("SPI", "Failed to transmit: %s", esp_err_to_name(ret));
     } else {
-        ESP_LOGI("SPI", "Received: 0x%02X", recv_buf[1]); // The received value should be 0xEA
+        ESP_LOGI("SPI", "Received: 0x%02X", recv_buf[1]);
+    }
+
+    return recv_buf[1];
+}
+
+bool write_register(uint8_t address, uint8_t value)
+{
+    uint8_t tx_data[2];
+    tx_data[0] = SPI_WRITE_MASK & address;  // Clear MSB to indicate a write operation
+    tx_data[1] = value;
+
+    spi_transaction_t transaction;
+    memset(&transaction, 0, sizeof(spi_transaction_t));  // Zero out the transaction struct
+    transaction.length = 16;
+    transaction.tx_buffer = tx_data;
+    transaction.rx_buffer = NULL;
+
+    esp_err_t result = spi_device_transmit(spi_handle, &transaction);
+    if (result != ESP_OK)
+    {
+        ESP_LOGE("SPI", "Failed to write to sensor: %s", esp_err_to_name(result));
+        return false;
+    }
+    else
+    {
+        ESP_LOGI("SPI", "Data 0x%X written to register 0x%X successfully", value, address);
+        return true;
     }
 }
 
-void select_user_bank(uint8_t user_bank) {
-
+bool select_user_bank(uint8_t user_bank)
+{
     uint8_t tx_data[2];
-    tx_data[0] = 0x7F;  // Clear the MSB for write operation
-    tx_data[1] = user_bank;               // Value is the bank number to select
+    tx_data[0] = SPI_WRITE_MASK;  // Clear the MSB for write operation
+    tx_data[1] = user_bank;
 
     spi_transaction_t t;
     memset(&t, 0, sizeof(spi_transaction_t));  // Clear transaction structure
@@ -85,8 +111,10 @@ void select_user_bank(uint8_t user_bank) {
     esp_err_t ret = spi_device_transmit(spi_handle, &t);  // Perform the transaction
     if (ret != ESP_OK) {
         ESP_LOGE("SPI", "Failed to select user bank: %s", esp_err_to_name(ret));
+        return false;
     } else {
         ESP_LOGI("SPI", "User bank %d selected successfully", user_bank);
+        return true;
     }
 }
 
@@ -105,7 +133,7 @@ void read_gyro_x(void) {
     spi_device_transmit(spi_handle, &trans_high);  // Transmit!
 
     // Prepare the command to read the low byte
-    uint8_t tx_data_low[2] = {0x80 | reg_address_low, 0x00};  // Set the read bit (MSB = 1)
+    uint8_t tx_data_low[2] = {SPI_READ_MASK | reg_address_low, 0x00};  // Set the read bit (MSB = 1)
     uint8_t rx_data_low[2] = {0};
     spi_transaction_t trans_low = {
         .length = 16,  // Command and data, 16 bits total
@@ -121,23 +149,4 @@ void read_gyro_x(void) {
     float acceleration = g_force * 9.81;          // Convert g-force to m/s² if needed
 
     ESP_LOGI("ACCEL", "Acceleration in m/s^2: %.3f m/s^2\n", acceleration);
-}
-
-void write_to_sensor(uint8_t address, uint8_t value) {
-    uint8_t tx_data[2];
-    tx_data[0] = 0x7F & address;  // Clear MSB to indicate a write operation
-    tx_data[1] = value;           // The value to write
-
-    spi_transaction_t transaction;
-    memset(&transaction, 0, sizeof(spi_transaction_t));  // Zero out the transaction struct
-    transaction.length = 16;        // Length of the transaction in bits (8 bits x 2)
-    transaction.tx_buffer = tx_data;  // The data to send
-    transaction.rx_buffer = NULL;     // No data expected to return
-
-    esp_err_t result = spi_device_transmit(spi_handle, &transaction);  // Perform the transaction
-    if (result != ESP_OK) {
-        ESP_LOGE("SPI", "Failed to write to sensor: %s", esp_err_to_name(result));
-    } else {
-        ESP_LOGI("SPI", "Data 0x%X written to register 0x%X successfully", value, address);
-    }
 }

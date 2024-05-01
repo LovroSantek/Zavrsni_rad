@@ -10,19 +10,14 @@
 
 void app_main() 
 {
-    esp_err_t spi_setup_err = spi_setup();
-    if (spi_setup_err != ESP_OK)
-    {
-        ESP_LOGE("SPI", "Failed to setup SPI: %s", esp_err_to_name(spi_setup_err));
-    }
-    else
-    {
-        ESP_LOGI("SPI", "SPI setup successful");
-    }
+    spi_setup();
     
     const char* TAG = "Timer"; // Dodano samo za delay
 
-    write_to_sensor(0X06, 0X01);
+    if (write_register(PWR_MGMT_REG_ADRESS, WAKE_UP_MASK))
+    {
+        ESP_LOGI("SPI: ", "Device is no longer in sleep mode");
+    }
 
     while(1) {
         ESP_LOGI(TAG, "One second has passed.");
