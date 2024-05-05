@@ -2,11 +2,14 @@
 #include "esp_log.h"
 #include "9DOF2_driver.h"
 
-#include <string.h>  // For memset
+#include <string.h>  // For memset()
 
-#include "freertos/FreeRTOS.h" //Dodano samo za delay
-#include "freertos/task.h" //Dodano samo za delay
-#include "esp_system.h" //Dodano samo za delay
+// For delay
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "esp_system.h"
+
+#include "MadgwickAHRS.h" // Data processing
 
 void app_main() 
 {
@@ -19,9 +22,35 @@ void app_main()
         ESP_LOGI("SPI: ", "Device is no longer in sleep mode");
     }
 
+    float roll = 0.f;
+    float pitch = 0.f;
+    float yaw = 0.f;
+
+    uint8_t i = 0;
+
     while(1) {
-        ESP_LOGI("Timer: ", "One second has passed.");
-        ESP_LOGI("Acceleration: ", "x = %.3f  y = %.3f  z = %.3f", read_accel(ACCEL_XOUT_H), read_accel(ACCEL_YOUT_H), read_accel(ACCEL_ZOUT_H));
-        vTaskDelay(1100 / portTICK_PERIOD_MS); //Dodano samo za delay
+        float gx = read_gyro(GYRO_XOUT_H);
+        float gy = read_gyro(GYRO_YOUT_H);
+        float gz = read_gyro(GYRO_ZOUT_H);
+        float ax = read_accel(ACCEL_XOUT_H);
+        float ay = read_accel(ACCEL_YOUT_H);
+        float az = read_accel(ACCEL_ZOUT_H);
+
+        MadgwickAHRSupdateIMU(gx, gy, gz, ax, ay, az);
+        //getAngles(&roll, &pitch, &yaw);
+        //ESP_LOGI("Angles: ", "x = %.3f  y = %.3f  z = %.3f", roll, pitch, yaw);
+
+        //ESP_LOGI("Acceleration: ", "x = %.3f  y = %.3f  z = %.3f", ax, ay, az);
+        //ESP_LOGI("Gyroscope: ", "x = %.3f  y = %.3f  z = %.3f", gx, gy, gz);
+
+        vTaskDelay(10 / portTICK_PERIOD_MS);  // Dodano samo za delay
+        i++;
+        if (i == 50)
+        {
+            i = 0;
+            //getAngles(&roll, &pitch, &yaw);
+            //ESP_LOGI("Angles: ", "x = %.3f  y = %.3f  z = %.3f", roll, pitch, yaw);
+            dESP_LOGI("Acceleration: ", "x = %.3f  y = %.3f  z = %.3f", ax, ay, az);
+        }
     }
 }
