@@ -17,6 +17,9 @@
     "idf.toolsPathWin": "C:\\esp\\.espressif",
     "files.associations": {
         "spi_master.h": "c",
-        "spi_common.h": "c"
-    }
+        "spi_common.h": "c",
+        "esp_err.h": "c",
+        "esp_gatts_api.h": "c"
+    },
+    "C_Cpp.errorSquiggles": "disabled"
 }
