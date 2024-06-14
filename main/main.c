@@ -48,7 +48,7 @@ void app_main()
 
         vTaskDelay(800 / portTICK_PERIOD_MS);  // Dodano samo za delay
         //getAngles(&roll, &pitch, &yaw);
-        //ESP_LOGI("Angles: ", "x = %.3f  y = %.3f  z = %.3f", roll, pitch, yaw);
-        ESP_LOGI("Acceleration: ", "x = %.3f  y = %.3f  z = %.3f", ax, ay, az);
+        //ESP_LOGI("Angles: ", "x = %.3f  y = %.3f  z = %.3f", roll, pitch, yaw);s
+        //ESP_LOGI("Acceleration: ", "x = %.3f  y = %.3f  z = %.3f", ax, ay, az);
     }
 }
