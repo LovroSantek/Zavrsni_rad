@@ -4,6 +4,7 @@
 #include "esp_gatts_api.h"
 #include "esp_bt_defs.h"
 #include "esp_bt_main.h"
+#include <string.h>
 
 #define GATTS_TAG "BLE_SERVER"
 
@@ -13,7 +14,7 @@ static const uint16_t char_uuid_accel_x = CHAR_UUID_ACCEL_X;
 static const uint16_t char_uuid_accel_y = CHAR_UUID_ACCEL_Y;
 static const uint16_t char_uuid_accel_z = CHAR_UUID_ACCEL_Z;
 
-static uint16_t connection_id = 0xFFFF;
+uint16_t connection_id = 0xFFFF;
 
 static bool is_notification_enabled_x = false;
 static bool is_notification_enabled_y = false;
@@ -22,6 +23,10 @@ static bool is_notification_enabled_z = false;
 static uint16_t cccd_handle_x;
 static uint16_t cccd_handle_y;
 static uint16_t cccd_handle_z;
+
+uint16_t handle_ax;
+uint16_t handle_ay;
+uint16_t handle_az;
 
 // UUIDs should be constants or defined correctly
 static const uint16_t service_uuid = SERVICE_UUID;
@@ -96,13 +101,20 @@ static const esp_gatts_attr_db_t gatt_db[] = {
 
 static uint16_t gatts_interface;
 
+static esp_ble_adv_params_t adv_params = {
+    .adv_int_min        = 0x20,
+    .adv_int_max        = 0x40,
+    .adv_type           = ADV_TYPE_IND,
+    .own_addr_type      = BLE_ADDR_TYPE_PUBLIC,
+    .channel_map        = ADV_CHNL_ALL,
+    .adv_filter_policy  = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY
+};
+
 static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
 {
     switch (event) {
         case ESP_GATTS_REG_EVT:
-            // Save the interface for later use
             gatts_interface = gatts_if;
-            // Register the attribute table
             esp_ble_gatts_create_attr_tab(gatt_db, gatts_if, sizeof(gatt_db) / sizeof(gatt_db[0]), 0);
         break;
 
@@ -114,6 +126,10 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
                 cccd_handle_x = start_handle + 3;
                 cccd_handle_y = start_handle + 6;
                 cccd_handle_z = start_handle + 9;
+
+                handle_ax = start_handle + 2;
+                handle_ay = start_handle + 5;
+                handle_az = start_handle + 8; 
             }
             else
             {
@@ -122,14 +138,27 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
         break;
 
         case ESP_GATTS_CONNECT_EVT:
-            connection_id = param->connect.conn_id;
-            gatts_interface = gatts_if;
-            ESP_LOGI(GATTS_TAG, "Device connected, conn_id = %d", connection_id);
+            ESP_LOGI(GATTS_TAG, "Device connected, conn_id = %d, remote address: %02x:%02x:%02x:%02x:%02x:%02x",
+            param->connect.conn_id,
+            param->connect.remote_bda[0], param->connect.remote_bda[1], param->connect.remote_bda[2],
+            param->connect.remote_bda[3], param->connect.remote_bda[4], param->connect.remote_bda[5]);
+
+            // Update connection parameters using the correct address
+            esp_ble_conn_update_params_t conn_params = {0};
+            memcpy(conn_params.bda, param->connect.remote_bda, sizeof(esp_bd_addr_t));
+            conn_params.min_int = 0x10;  // Minimum interval for the connection
+            conn_params.max_int = 0x20;  // Maximum interval for the connection
+            conn_params.latency = 0;
+            conn_params.timeout = 400;
+            esp_ble_gap_update_conn_params(&conn_params);
         break;
 
         case ESP_GATTS_DISCONNECT_EVT:
             ESP_LOGI(GATTS_TAG, "Device disconnected, conn_id = %d", connection_id);
             connection_id = 0xFFFF;
+
+            ESP_LOGI(GATTS_TAG, "Restarting advertising");
+            esp_ble_gap_start_advertising(&adv_params);
         break;
 
         case ESP_GATTS_WRITE_EVT:
@@ -153,22 +182,38 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
     }
 }
 
-static esp_ble_adv_params_t adv_params = {
-    .adv_int_min        = 0x20,
-    .adv_int_max        = 0x40,
-    .adv_type           = ADV_TYPE_IND,
-    .own_addr_type      = BLE_ADDR_TYPE_PUBLIC,
-    .channel_map        = ADV_CHNL_ALL,
-    .adv_filter_policy  = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY
-};
-
 void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
     switch (event) {
         case ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT:
             esp_ble_gap_start_advertising(&adv_params);
             ESP_LOGI(GATTS_TAG, "BLE advertising started");
-            break;
+        break;
+
+        case ESP_GAP_BLE_UPDATE_CONN_PARAMS_EVT:
+            ESP_LOGI(GATTS_TAG, "Update connection parameters status: %d, min_int: %d, max_int: %d, latency: %d, timeout: %d",
+                     param->update_conn_params.status,
+                     param->update_conn_params.min_int,
+                     param->update_conn_params.max_int,
+                     param->update_conn_params.latency,
+                     param->update_conn_params.timeout);
+            if (param->update_conn_params.status != 0)
+            {
+                ESP_LOGE(GATTS_TAG, "Failed to update connection parameters");
+            }
+        break;
+
+        case ESP_GAP_BLE_ADV_START_COMPLETE_EVT:
+            if (param->adv_start_cmpl.status == ESP_BT_STATUS_SUCCESS)
+            {
+                ESP_LOGI(GATTS_TAG, "Advertising started successfully");
+            }
+            else
+            {
+                ESP_LOGE(GATTS_TAG, "Failed to start advertising");
+            }
+        break;
+
         default:
             ESP_LOGI(GATTS_TAG, "Unhandled GAP event %d", event);
             break;
@@ -233,4 +278,12 @@ void bluetooth_server_init(void)
 
     ble_advertising_start();
     ESP_LOGI(GATTS_TAG, "Advertising start requested.");
+}
+
+void ble_send_notification(uint16_t conn_id, uint16_t handle, uint8_t* data, size_t length)
+{
+    ESP_LOGI(GATTS_TAG, "Trying to send data");
+    if (is_notification_enabled_x) {
+        esp_ble_gatts_send_indicate(gatts_interface, conn_id, handle, length, data, false);
+    }
 }
