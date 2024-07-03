@@ -32,6 +32,8 @@
 
 #define GYRO_SENSITIVITY 131.0  // Sensitivity setting for the gyroscope ()
 
+#define MAG_SENSITIVITY 0.15  // Sensitivity setting for the magnetometer
+
 extern spi_device_handle_t spi_handle;  // Declaration of the SPI device handle
 
 void spi_setup();

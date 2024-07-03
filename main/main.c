@@ -5,18 +5,24 @@
 #include <string.h>
 #include <stdbool.h>
 
-// For delay
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_system.h"
 
 #include "Fusion.h"
 
-#define SAMPLE_PERIOD (0.1f) // replace this with actual sample period
+#include "WIFI.h"
+#include "httpServer.h"
+
+#define SAMPLE_PERIOD (0.1f)
+
+float global_yaw = 0.0, global_pitch = 0.0, global_roll = 0.0;
 
 void app_main() 
 {
     spi_setup();
+    wifi_init();
+    http_server_start();
 
     FusionAhrs ahrs;
     FusionAhrsInitialise(&ahrs);
@@ -36,11 +42,15 @@ void app_main()
         float ay = read_accel(ACCEL_YOUT_H);
         float az = read_accel(ACCEL_ZOUT_H);
 
-        const FusionVector gyroscope = {.axis = {gx, gy, gz}}; // in degrees/s
-        const FusionVector accelerometer = {.axis = {ax, ay, az}}; // in g
+        const FusionVector gyroscope = {.axis = {gx, gy, gz}};
+        const FusionVector accelerometer = {.axis = {ax, ay, az}};
 
         FusionAhrsUpdateNoMagnetometer(&ahrs, gyroscope, accelerometer, SAMPLE_PERIOD);
         const FusionEuler euler = FusionQuaternionToEuler(FusionAhrsGetQuaternion(&ahrs));
+
+        global_yaw = euler.angle.yaw;
+        global_pitch = euler.angle.pitch;
+        global_roll = euler.angle.roll;
 
         //ESP_LOGI("Acceleration: ", "x = %.3f  y = %.3f  z = %.3f", ax, ay, az);
         //ESP_LOGI("Gyroscope: ", "x = %.3f  y = %.3f  z = %.3f", gx, gy, gz);
