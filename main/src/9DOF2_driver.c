@@ -120,7 +120,6 @@ bool select_user_bank(uint8_t user_bank)
 
 float read_accel(uint8_t accel_out_adress)
 {
-    // Prepare the command to read the high byte
     uint8_t tx_data_high[2] = {SPI_READ_MASK | accel_out_adress, 0x00};
     uint8_t rx_data_high[2] = {0};
     spi_transaction_t trans_high = {
@@ -130,7 +129,6 @@ float read_accel(uint8_t accel_out_adress)
     };
     spi_device_transmit(spi_handle, &trans_high);
 
-    // Prepare the command to read the low byte
     uint8_t tx_data_low[2] = {SPI_READ_MASK | (accel_out_adress + 1), 0x00};
     uint8_t rx_data_low[2] = {0};
     spi_transaction_t trans_low = {
@@ -140,14 +138,13 @@ float read_accel(uint8_t accel_out_adress)
     };
     spi_device_transmit(spi_handle, &trans_low);
 
-    int16_t accel = ((int16_t)rx_data_high[1] << 8) | rx_data_low[1];  // Combine the high and low bytes
+    int16_t accel = ((int16_t)rx_data_high[1] << 8) | rx_data_low[1];
 
     return accel / ACCEL_SENSITIVITY;
 }
 
 float read_gyro(uint8_t gyro_out_adress)
 {
-    // Prepare the command to read the high byte
     uint8_t tx_data_high[2] = {SPI_READ_MASK | gyro_out_adress, 0x00};
     uint8_t rx_data_high[2] = {0};
     spi_transaction_t trans_high = {
@@ -157,7 +154,6 @@ float read_gyro(uint8_t gyro_out_adress)
     };
     spi_device_transmit(spi_handle, &trans_high);
 
-    // Prepare the command to read the low byte
     uint8_t tx_data_low[2] = {SPI_READ_MASK | (gyro_out_adress + 1), 0x00};
     uint8_t rx_data_low[2] = {0};
     spi_transaction_t trans_low = {
@@ -167,7 +163,7 @@ float read_gyro(uint8_t gyro_out_adress)
     };
     spi_device_transmit(spi_handle, &trans_low);
 
-    int16_t gyro = ((int16_t)rx_data_high[1] << 8) | rx_data_low[1];  // Combine the high and low bytes
+    int16_t gyro = ((int16_t)rx_data_high[1] << 8) | rx_data_low[1];
 
     return gyro / GYRO_SENSITIVITY;
 }

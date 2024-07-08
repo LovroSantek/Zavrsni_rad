@@ -14,7 +14,7 @@
 #include "WIFI.h"
 #include "httpServer.h"
 
-#define SAMPLE_PERIOD (0.1f)
+#define SAMPLE_PERIOD (0.01f)
 
 float global_yaw = 0.0, global_pitch = 0.0, global_roll = 0.0;
 
@@ -42,10 +42,10 @@ void app_main()
         float ay = read_accel(ACCEL_YOUT_H);
         float az = read_accel(ACCEL_ZOUT_H);
 
-        const FusionVector gyroscope = {.axis = {gx, gy, gz}};
-        const FusionVector accelerometer = {.axis = {ax, ay, az}};
+        const FusionVector gyro = {.axis = {gx, gy, gz}};
+        const FusionVector accel = {.axis = {ax, ay, az}};
 
-        FusionAhrsUpdateNoMagnetometer(&ahrs, gyroscope, accelerometer, SAMPLE_PERIOD);
+        FusionAhrsUpdateNoMagnetometer(&ahrs, gyro, accel, SAMPLE_PERIOD);
         const FusionEuler euler = FusionQuaternionToEuler(FusionAhrsGetQuaternion(&ahrs));
 
         global_yaw = euler.angle.yaw;
@@ -56,6 +56,6 @@ void app_main()
         //ESP_LOGI("Gyroscope: ", "x = %.3f  y = %.3f  z = %.3f", gx, gy, gz);
         //ESP_LOGI("Euler angles: ","Roll %0.1f, Pitch %0.1f, Yaw %0.1f\n", euler.angle.roll, euler.angle.pitch, euler.angle.yaw);
 
-        vTaskDelay(100 / portTICK_PERIOD_MS);
+        vTaskDelay((int) (1000 * SAMPLE_PERIOD) / portTICK_PERIOD_MS);
     }
 }
