@@ -5,9 +5,9 @@
 #include "freertos/event_groups.h"
 #include "nvs_flash.h"
 
-#define WIFI_SSID "Xiaomi 12X"        // Replace with your Wi-Fi SSID
-#define WIFI_PASS "lovorkosane"    // Replace with your Wi-Fi Password
-#define MAX_RETRY  10               // Max number of connection attempts
+#define WIFI_SSID "Xiaomi 12X"
+#define WIFI_PASS "lovorkosane"
+#define MAX_RETRY  10
 
 static EventGroupHandle_t wifi_event_group;
 const int WIFI_CONNECTED_BIT = BIT0;
